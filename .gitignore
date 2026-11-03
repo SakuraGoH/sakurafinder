@@ -1,0 +1,42 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.venv/
+venv/
+env/
+.coverage
+htmlcov/
+
+# 本项目数据（不要入库）
+*.db
+*.db-shm
+*.db-wal
+.sakurafinder/
+config.json
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# PyInstaller / Nuitka
+*.spec
+*.build/
+*.dist/
+*.onefile-build/
+
+# 临时文件
+*.log
+*.tmp
