@@ -1,714 +1,334 @@
-\# SakuraFinder
+English | [简体中文](README.zh-CN.md)
 
+# SakuraFinder
 
+> A cross-platform file indexer and instant search tool, inspired by [Everything](https://www.voidtools.com/). Built in Python, extensible by design.
 
-A cross-platform file indexer and instant search tool, inspired by \[Everything](https://www.voidtools.com/) — built in Python, extensible by design.
-
-
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#requirements)
+[![Status](https://img.shields.io/badge/status-MVP-orange.svg)](#roadmap)
 
 SakuraFinder indexes your files into a single portable SQLite database, watches the filesystem for changes in real time, and lets you search by name, path, extension, size, and modification time with sub-second latency.
 
+---
 
+## Table of Contents
 
-\---
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Search Syntax](#search-syntax)
+- [GUI Usage](#gui-usage)
+- [Configuration](#configuration)
+- [Python API](#python-api)
+- [Command Line](#command-line)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap](#roadmap)
+- [License](#license)
 
+---
 
+## Features
 
-\## Features
+- **Fast substring search** over file names and paths
+- **Real-time updates** via [`watchdog`](https://github.com/gorakhargosh/watchdog) (create / modify / delete / rename)
+- **Portable index** — a single SQLite file you can back up, sync, or inspect
+- **Boolean and filter syntax** — `AND`, `OR`, `NOT`, `ext:`, `size:`, `after:`, `before:`, `dir:`, `file:`, `re:`
+- **Cross-platform** — Windows, macOS, Linux
+- **Layered architecture** — daemon / storage / query API / UI are decoupled
+- **CLI, GUI, and importable Python API**
+- **System tray + global hotkey** for quick access
+- **MIT licensed**
 
+---
 
+## Requirements
 
-\- \*\*Fast substring search\*\* over file names and paths
+| Component | Version |
+|---|---|
+| Python | 3.10 or newer |
+| OS | Windows 10/11, macOS 12+, modern Linux desktop |
+| GUI | [`PySide6`](https://doc.qt.io/qtforpython/) (installed automatically) |
 
-\- \*\*Real-time updates\*\* via `watchdog` (create / modify / delete / rename)
+---
 
-\- \*\*Portable index\*\*: a single SQLite file you can back up, sync, or inspect
-
-\- \*\*Boolean + filter syntax\*\*: `AND`, `OR`, `NOT`, `ext:`, `size:`, `after:`, `before:`, `dir:`, `file:`, `re:`
-
-\- \*\*Cross-platform\*\*: Windows, macOS, Linux
-
-\- \*\*Layered architecture\*\*: daemon / storage / query API / UI are decoupled
-
-\- \*\*CLI, GUI, and importable Python API\*\*
-
-\- \*\*Tray + global hotkey\*\* for quick access
-
-\- \*\*MIT licensed\*\*
-
-
-
-\---
-
-
-
-\## Requirements
-
-
-
-\- Python \*\*3.10+\*\*
-
-\- Windows 10/11, macOS 12+, or a modern Linux desktop
-
-\- For the GUI: `PySide6` (installed automatically with the package)
-
-
-
-\---
-
-
-
-\## Installation
-
-
+## Installation
 
 ```bash
-
-git clone https://github.com/<your-name>/sakurafinder.git
-
+git clone https://github.com/SakuraGoH/sakurafinder.git
 cd sakurafinder
-
 pip install -e .
-
 ```
-
-
 
 For development (test dependencies):
 
-
-
 ```bash
-
-pip install -e ".\[dev]"
-
+pip install -e ".[dev]"
 ```
 
-
-
-Verify:
-
-
+Verify the installation:
 
 ```bash
-
 sakurafinder --help
-
 sakurafinder-daemon --help
-
 sakurafinder-ui --help
-
 ```
 
+> If `sakurafinder` is not recognized, use the module form: `python -m sakurafinder.cli --help`.
 
+---
 
-> If `sakurafinder` is not recognized, use the module form:
+## Quick Start
 
-> `python -m sakurafinder.cli --help`
+### 1. Create a configuration file
 
+The config lives at `~/.sakurafinder/config.json` (`C:\Users\<you>\.sakurafinder\config.json` on Windows).
 
-
-\---
-
-
-
-\## Project Layout
-
-
-
-```
-
-sakurafinder/
-
-├── pyproject.toml
-
-└── sakurafinder/
-
-&#x20;   ├── \_\_init\_\_.py
-
-&#x20;   ├── config.py            # Config load/save
-
-&#x20;   ├── models.py            # Dataclasses: FileRecord, SearchQuery, SearchResult
-
-&#x20;   ├── daemon.py            # Index daemon: scanner + watcher + writer
-
-&#x20;   ├── cli.py               # Command-line search
-
-&#x20;   ├── core/
-
-&#x20;   │   ├── scanner.py       # os.scandir multi-threaded scan
-
-&#x20;   │   ├── watcher.py       # watchdog → event queue
-
-&#x20;   │   ├── indexer.py       # Batch consumer → SQLite
-
-&#x20;   │   └── utils.py         # Path normalization, exclude rules
-
-&#x20;   ├── storage/
-
-&#x20;   │   ├── db.py            # SQLite schema, connection
-
-&#x20;   │   └── repo.py          # File record read/write
-
-&#x20;   ├── search/
-
-&#x20;   │   ├── parser.py        # Query syntax → SearchQuery
-
-&#x20;   │   └── engine.py        # SearchQuery → SQL
-
-&#x20;   ├── api/
-
-&#x20;   │   └── service.py       # Unified SearchService
-
-&#x20;   └── ui/
-
-&#x20;       ├── app.py           # Qt app entry, system tray
-
-&#x20;       ├── main\_window.py   # Search box + results table
-
-&#x20;       └── result\_model.py  # QAbstractTableModel
-
-```
-
-
-
-\---
-
-
-
-\## Quick Start
-
-
-
-\### 1. Create a configuration file
-
-
-
-Config lives at `\~/.sakurafinder/config.json` (`C:\\Users\\<you>\\.sakurafinder\\config.json` on Windows).
-
-
-
-Generate a minimal one with Python to avoid JSON escape pitfalls on Windows:
-
-
+Generating it with Python avoids JSON escape pitfalls on Windows:
 
 ```python
-
 import json, os
 
-p = os.path.expanduser("\~/.sakurafinder/config.json")
-
-os.makedirs(os.path.dirname(p), exist\_ok=True)
+p = os.path.expanduser("~/.sakurafinder/config.json")
+os.makedirs(os.path.dirname(p), exist_ok=True)
 
 cfg = {
-
-&#x20;   "roots": \[
-
-&#x20;       {
-
-&#x20;           "path": os.path.expanduser("\~"),
-
-&#x20;           "enabled": True,
-
-&#x20;           "excludes": \[
-
-&#x20;               "\*\*/node\_modules/\*\*",
-
-&#x20;               "\*\*/.git/\*\*",
-
-&#x20;               "\*\*/\_\_pycache\_\_/\*\*",
-
-&#x20;               "\*\*/AppData/Local/Temp/\*\*"
-
-&#x20;           ]
-
-&#x20;       }
-
-&#x20;   ],
-
-&#x20;   "scan\_workers": 8,
-
-&#x20;   "enable\_content\_index": False,
-
-&#x20;   "debounce\_ms": 120,
-
-&#x20;   "page\_size": 500
-
+    "roots": [
+        {
+            "path": os.path.expanduser("~"),
+            "enabled": True,
+            "excludes": [
+                "**/node_modules/**",
+                "**/.git/**",
+                "**/__pycache__/**",
+                "**/AppData/Local/Temp/**",
+            ],
+        }
+    ],
+    "scan_workers": 8,
+    "enable_content_index": False,
+    "debounce_ms": 120,
+    "page_size": 500,
 }
 
 with open(p, "w", encoding="utf-8") as f:
+    json.dump(cfg, f, ensure_ascii=False, indent=2)
 
-&#x20;   json.dump(cfg, f, ensure\_ascii=False, indent=2)
-
+print("wrote:", p)
 ```
 
-
-
-Save as `write\_cfg.py` and run:
-
-
+Save as `write_cfg.py` and run:
 
 ```bash
-
-python write\_cfg.py
-
+python write_cfg.py
 ```
 
-
-
-\### 2. Build the initial index
-
-
+### 2. Build the initial index
 
 ```bash
-
 python -m sakurafinder.daemon --scan --no-watch
-
 ```
 
+Expected output:
 
-
-You will see progress like:
-
-
-
+```text
+[scan] indexed 5000...
+[scan] done: 123456 records in 45.3s
 ```
 
-\[scan] indexed 5000...
-
-\[scan] done: 123456 records in 45.3s
-
-```
-
-
-
-\### 3. Search from the CLI
-
-
+### 3. Search from the CLI
 
 ```bash
-
 python -m sakurafinder.cli "report ext:pdf size:>1MB" --limit 20
-
 python -m sakurafinder.cli "notes -old" --sort mtime --desc
-
 ```
 
-
-
-\### 4. Start real-time monitoring (optional)
-
-
+### 4. Start real-time monitoring (optional, recommended)
 
 Keep this running in a terminal:
 
-
-
 ```bash
-
 python -m sakurafinder.daemon
-
 ```
 
+Expected output:
 
+```text
+[daemon] watching... Ctrl+C to stop
+```
 
-Output: `\[daemon] watching... Ctrl+C to stop`
-
-
-
-\### 5. Launch the GUI
-
-
+### 5. Launch the GUI
 
 In another terminal:
 
-
-
 ```bash
-
 python -m sakurafinder.ui.app
-
 ```
 
+---
 
-
-\---
-
-
-
-\## Search Syntax
-
-
+## Search Syntax
 
 | Example | Meaning |
-
 |---|---|
-
 | `report` | Substring match on name or path |
-
 | `report draft` | Both must match (AND) |
-
-| `report \\| draft` | Either matches (OR) |
-
+| `report \| draft` | Either matches (OR) |
 | `report -draft` | Contains `report`, excludes `draft` |
-
-| `ext:py` | Extension filter |
-
+| `ext:py` | Filter by extension |
 | `ext:py,js` | Multiple extensions |
-
-| `size:>1MB` | Size greater than 1 MB (`<`, `<=`, `=`, `>=` also supported; units: B, K, M, G, T) |
-
+| `size:>1MB` | Larger than 1 MB (`<`, `<=`, `=`, `>=` supported; units B, K, M, G, T) |
 | `after:2024-01-01` | Modified after this date |
-
 | `before:2024-12-31` | Modified before this date |
-
 | `dir:` | Directories only |
-
 | `file:` | Files only |
+| `re:^report_.*\.pdf$` | Regular expression (applied to a candidate set) |
+| `*report*` | Wildcards `*` and `?` supported |
 
-| `re:^report\_.\*\\.pdf$` | Regular expression (applied to a candidate set) |
-
-| `\*report\*` | Wildcards `\*` and `?` supported |
-
-
-
-Sort and pagination are CLI options:
-
-
+Sorting and pagination are CLI options:
 
 ```bash
-
 python -m sakurafinder.cli "log" --sort size --desc --limit 50 --offset 100
-
 ```
-
-
 
 Sort keys: `name`, `path`, `size`, `mtime`.
 
+---
 
-
-\---
-
-
-
-\## GUI Usage
-
-
+## GUI Usage
 
 | Action | Result |
-
 |---|---|
-
 | Type in the search box | Live results (120 ms debounce) |
-
-| \*\*Double-click\*\* a row | Open the file with the default application |
-
-| \*\*Right-click → Open\*\* | Same as double-click |
-
-| \*\*Right-click → Open containing folder\*\* | Explorer/Finder opens with the file selected |
-
-| \*\*Right-click → Copy path\*\* | Copies path(s); multi-select yields multiple lines |
-
-| \*\*Right-click → Delete (to trash)\*\* | Requires `send2trash`; refreshes the list afterwards |
-
+| **Double-click** a row | Open with the default application |
+| **Right-click → Open** | Same as double-click |
+| **Right-click → Open containing folder** | File manager opens with the file selected |
+| **Right-click → Copy path** | Copies path(s); multi-select yields one per line |
+| **Right-click → Delete (to trash)** | Requires `send2trash`; refreshes the list afterwards |
 | `Ctrl+L` | Focus the search box |
-
 | Close window | Hides to system tray (app keeps running) |
-
 | Tray → Show / Quit | Restore window / exit |
 
+> The GUI only **reads** the SQLite index. To see live filesystem changes, the **daemon must be running**.
 
+---
 
-> The GUI only \*\*reads\*\* the SQLite index. To see live filesystem changes, the \*\*daemon must be running\*\*.
+## Configuration
 
-
-
-\---
-
-
-
-\## Configuration Reference
-
-
-
-`\~/.sakurafinder/config.json`:
-
-
+`~/.sakurafinder/config.json`:
 
 | Field | Type | Default | Description |
-
 |---|---|---|---|
-
-| `roots` | list | `\[]` | Index roots. Each item: `{path, enabled, excludes}` |
-
-| `index\_db` | string | `""` | Custom DB path; empty uses `\~/.sakurafinder/index.db` |
-
-| `enable\_content\_index` | bool | `false` | Enable FTS5 full-text content index (experimental) |
-
-| `max\_content\_size` | int | `2097152` | Max bytes of file content to index (2 MB) |
-
-| `scan\_workers` | int | `4` | Threads used during full scan |
-
-| `debounce\_ms` | int | `120` | Search debounce in the GUI |
-
-| `page\_size` | int | `500` | Results per page |
-
+| `roots` | list | `[]` | Index roots. Each item: `{path, enabled, excludes}` |
+| `index_db` | string | `""` | Custom DB path; empty uses `~/.sakurafinder/index.db` |
+| `enable_content_index` | bool | `false` | Enable FTS5 full-text content index (experimental) |
+| `max_content_size` | int | `2097152` | Max bytes of file content to index (2 MB) |
+| `scan_workers` | int | `4` | Threads used during full scan |
+| `debounce_ms` | int | `120` | Search debounce in the GUI |
+| `page_size` | int | `500` | Results per page |
 | `hotkey` | string | `Ctrl+Alt+Space` | Global hotkey to focus the search box |
-
-
 
 `excludes` uses `fnmatch` patterns with `/` separators (Windows paths are normalized internally).
 
+---
 
-
-\---
-
-
-
-\## Python API
-
-
+## Python API
 
 ```python
-
-from sakurafinder import load\_config
-
+from sakurafinder import load_config
 from sakurafinder.api import SearchService
 
+svc = SearchService(load_config())
+res = svc.search("report ext:pdf", limit=50, sort_by="mtime", sort_desc=True)
 
-
-svc = SearchService(load\_config())
-
-res = svc.search("report ext:pdf", limit=50, sort\_by="mtime", sort\_desc=True)
-
-
-
-print(res.total, "results in", f"{res.elapsed\_ms:.1f} ms")
-
+print(f"{res.total} results in {res.elapsed_ms:.1f} ms")
 for r in res.items:
-
-&#x20;   print(r.path, r.size, r.mtime)
-
+    print(r.path, r.size, r.mtime)
 ```
 
+The CLI, GUI, and any future HTTP server all go through this single entry point.
 
+---
 
-This is the same entry point used by the CLI, GUI, and any future HTTP server.
+## Command Line
 
-
-
-\---
-
-
-
-\## Command-Line Reference
-
-
-
-\### `sakurafinder` (search)
-
-
-
+```text
+sakurafinder [-h] [--limit N] [--offset N] [--sort {name,path,size,mtime}] [--desc] [query]
+sakurafinder-daemon [-h] [--scan] [--no-watch]
+sakurafinder-ui
 ```
 
-usage: sakurafinder \[-h] \[--limit N] \[--offset N]
+| Flag | Description |
+|---|---|
+| `--scan` | Perform a full scan on startup |
+| `--no-watch` | Do not start the filesystem watcher |
+| `--limit N` | Max results (default 50) |
+| `--offset N` | Skip N results (pagination) |
+| `--sort` | `name`, `path`, `size`, `mtime` |
+| `--desc` | Descending order |
 
-&#x20;                   \[--sort {name,path,size,mtime}] \[--desc] \[query]
+---
 
-```
-
-
-
-\### `sakurafinder-daemon` (index)
-
-
-
-```
-
-usage: sakurafinder-daemon \[-h] \[--scan] \[--no-watch]
-
-
-
-&#x20; --scan      Perform a full scan on startup
-
-&#x20; --no-watch  Do not start the filesystem watcher
-
-```
-
-
-
-\### `sakurafinder-ui` (GUI)
-
-
-
-```
-
-usage: sakurafinder-ui
-
-```
-
-
-
-\---
-
-
-
-\## Running in the Background (Windows)
-
-
-
-To keep the daemon running without a console window, register a Scheduled Task:
-
-
-
-```powershell
-
-$pyw = (Get-Command pythonw.exe).Source
-
-$proj = "C:\\path\\to\\sakurafinder"
-
-$action  = New-ScheduledTaskAction -Execute $pyw -Argument "-m sakurafinder.daemon" -WorkingDirectory $proj
-
-$trigger = New-ScheduledTaskTrigger -AtLogOn
-
-Register-ScheduledTask -TaskName "SakuraFinderDaemon" -Action $action -Trigger $trigger
-
-```
-
-
-
-Manage with `Start-ScheduledTask` / `Stop-ScheduledTask` / `Unregister-ScheduledTask`.
-
-
-
-On macOS/Linux, use `launchd` or `systemd --user` with the equivalent command.
-
-
-
-\---
-
-
-
-\## Troubleshooting
-
-
+## Troubleshooting
 
 | Symptom | Cause | Fix |
-
 |---|---|---|
-
-| `未配置索引根目录` / `no roots configured` | `config.json` missing or `roots` empty | Recreate config (see Quick Start) |
-
-| `ModuleNotFoundError: No module named 'sakurafinder'` | Stale editable install | `pip uninstall -y sakurafinder \&\& pip install -e .` |
-
+| `no roots configured` | `config.json` missing or `roots` empty | Recreate config (see Quick Start) |
+| `ModuleNotFoundError: No module named 'sakurafinder'` | Stale editable install | `pip uninstall -y sakurafinder && pip install -e .` |
 | `No module named 'sakurafinder.core.scanner'` | File named `scanners.py` | Rename to `scanner.py` |
-
 | Search returns nothing | Index empty or daemon not run | Run `--scan`; check `SearchService.stats()` |
-
 | New files don't appear | Daemon not running | Start `python -m sakurafinder.daemon` |
+| Chinese filenames not found | Encoding issue | Save config as UTF-8; run `chcp 65001` |
+| Deleted files still appear | Scan is upsert-only; no prune yet | Delete files while the daemon is running, or clear the DB and rescan |
+| GUI shows nothing but CLI works | Different DB paths | Compare `load_config().resolved_db_path()` in both |
 
-| Chinese filenames not found | Encoding issue | Ensure config saved as UTF-8; run `chcp 65001` |
+---
 
-| Deleted files still appear | Scan is upsert-only; no prune yet | Delete files while daemon is running, or clear DB and rescan |
+## Roadmap
 
-| GUI shows nothing but CLI works | Different DB paths | Compare `load\_config().resolved\_db\_path()` in both |
+- [x] MVP — scan, watch, SQLite index, CLI, GUI, filters
+- [ ] FTS5 content index (opt-in)
+- [ ] Relevance ranking (exact > prefix > substring)
+- [ ] Tag / bookmark system
+- [ ] Local HTTP / gRPC query API
+- [ ] Content preview with match highlighting
+- [ ] Periodic drift-check for incremental index robustness
+- [ ] Windows USN Journal / MFT reader (optional, for parity with Everything)
 
+---
 
+## License
 
-\---
+Released under the **MIT License**. See [LICENSE](LICENSE) for details.
 
-
-
-\## Roadmap
-
-
-
-\- \[x] MVP: scan, watch, SQLite index, CLI, GUI, filters
-
-\- \[ ] FTS5 content index (opt-in)
-
-\- \[ ] Relevance ranking (exact > prefix > substring)
-
-\- \[ ] Tag / bookmark system
-
-\- \[ ] Local HTTP / gRPC query API
-
-\- \[ ] Content preview with match highlighting
-
-\- \[ ] Periodic drift-check for incremental index robustness
-
-\- \[ ] Windows USN Journal / MFT reader (optional, for parity with Everything)
-
-
-
-\---
-
-
-
-\## License
-
-
-
-Released under the \*\*MIT License\*\*. See \[LICENSE](LICENSE).
-
-
-
-```
-
+```text
 MIT License
-
-
 
 Copyright (c) 2024 <your name>
 
-
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
-
 of this software and associated documentation files (the "Software"), to deal
-
 in the Software without restriction, including without limitation the rights
-
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-
 copies of the Software, and to permit persons to whom the Software is
-
 furnished to do so, subject to the following conditions:
 
-
-
 The above copyright notice and this permission notice shall be included in all
-
 copies or substantial portions of the Software.
 
-
-
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-
 SOFTWARE.
-
 ```
 
+---
 
+## Acknowledgements
 
-\---
-
-
-
-\## Acknowledgements
-
-
-
-Inspired by \[Everything](https://www.voidtools.com/) by voidtools. Built with \[watchdog](https://github.com/gorakhargosh/watchdog), \[PySide6](https://doc.qt.io/qtforpython/), and Python's standard `sqlite3`.
-
+Inspired by [Everything](https://www.voidtools.com/) by voidtools. Built with [`watchdog`](https://github.com/gorakhargosh/watchdog), [`PySide6`](https://doc.qt.io/qtforpython/), and Python's standard `sqlite3`.
